@@ -37,14 +37,13 @@ openai.organization = config['default']['openai org key']
 openai.api_key = config['default']['openai api key']
 models = openai.Model.list()
 
-print("██      ██   ██ ██      ██      ██      ██  ██ ██ ██ ██  ██ ")   
 discord_token = config['default']['discord api key']
 discord_intents=discord.Intents.default()
 discord_intents.message_content=True
 discord_bot=commands.Bot(intents=discord_intents, command_prefix='!')
 general_channel_id = int(config['default']['channel id'])
+print("██      ██   ██ ██      ██      ██      ██  ██ ██ ██ ██  ██ ")   
 
-print("██      ██   ██ ███████ ███████ ███████ ██   ████ ██ ██   ██")
 frellnik_role = config['default']['base prompt']
 frellnik_name = config['default']['bot name']
 admin_user = config['default']['admin user']
@@ -55,7 +54,7 @@ any_rate = int(config['default']['any text'])
 greet_mimumum = int(config['default']['greet minimum'])
 meme_chance = int(config['default']['meme chance'])
 image_rate_limit = int(config['default']['image rate limit'])
-
+print("██      ██   ██ ███████ ███████ ███████ ██   ████ ██ ██   ██")
 async def get_modifier():
     with open("_modifier") as file:
         lines = file.readlines()
@@ -158,10 +157,28 @@ async def on_message(message):
 
         with open(scriptPath+delimeter+'last_message_times.json', 'w') as file:
             json.dump(last_message_times, file)'''
-
+        current_time = datetime.datetime.now().timestamp()
         if message.content[0] == '!': #Respond to command
             command, arg = message.content.split(' ',1)
-            if command == '!keyword': #Add keyphrase to list of keyphrases
+            if command == '!roll': #roll dice
+                get_response = False
+                print("Rolling Dice")
+                command = message.content[6:].strip()  # Extract the command argument after '!roll'
+                rolls = command.split(',')  # Split the command into individual dice rolls
+
+                results = []
+                for roll in rolls:
+                    num_dice, dice_type = roll.split('d')
+                    num_dice = int(num_dice.strip())
+                    dice_type = int(dice_type.strip())
+
+                    rolls = [random.randint(1, dice_type) for _ in range(num_dice)]
+                    result = f"{num_dice}d{dice_type}: {rolls} = {sum(rolls)}"
+                    results.append(result)
+
+                response = '\n'.join(results)
+                await message.channel.send(response)
+            elif command == '!keyword': #Add keyphrase to list of keyphrases
                 get_response = False
                 print("Adding new keyphrase to file:",arg)
                 with open(scriptPath+delimeter+'_keywords','a') as keywords_file:
@@ -173,41 +190,70 @@ async def on_message(message):
                 with open(scriptPath+delimeter+'_elements','a') as elements_file:
                     elements_file.write('\n'+arg)
                     await message.channel.send("\""+arg+"\" added to the list of prompts.")
-            elif command == '!draw' and str(message.author) == admin_user: #Draw Picture
+            elif command == '!draw': #Draw Picture
                 get_response = False
+                generate_image = True
                 print("Drawing a picture")
-                image_prompt = message.content.replace('!draw ','')
-                image = openai.Image.create(
-                    prompt=image_prompt,
-                    n=1,
-                    size='512x512',
-                )
-                print("Downloading Image")
-                image_data = requests.get(image['data'][0]['url']).content
-                image_filename = str(image['created'])+'.png'
-                print("Saving Image to File:",image_filename)
+                current_time = datetime.datetime.now().timestamp()
                 try:
-                    with open(scriptPath+delimeter+image_filename, 'wb') as image_file:
-                        image_file.write(image_data)
-                    print("Uploading File to Discord")
-                    await message.channel.send(image_prompt,file=discord.File(scriptPath+delimeter+image_filename))
-                    os.remove(scriptPath+delimeter+image_filename)
+                    if 'draw' in rate_limit_data and str(message.author) != admin_user:
+                        last_time = rate_limit_data['draw']
+                        last_time = datetime.datetime.fromtimestamp(last_time)
+                        time_since_last = datetime.datetime.now() - last_time
+                        
+                        if time_since_last < datetime.timedelta(minutes=image_rate_limit): 
+                            time_remaining = datetime.timedelta(minutes=image_rate_limit) - time_since_last
+                            time_remaining_min = time_remaining.total_seconds() / 60
+                            await message.channel.send('Image generation is rate-limited. Try again in '+str(round(time_remaining_min))+' minutes',reference=message)
+                            generate_image = False
                 except Exception as e:
-                    print("ERROR:",e)
+                    print(e)
+                if generate_image == True:
+                    image_prompt = message.content.replace('!draw ','')
+                    image = openai.Image.create(
+                        prompt=image_prompt,
+                        n=1,
+                        size='512x512',
+                    )
+                    print("Downloading Image")
+                    image_data = requests.get(image['data'][0]['url']).content
+                    image_filename = str(image['created'])+'.png'
+                    print("Saving Image to File:",image_filename)
+                    try:
+                        with open(scriptPath+delimeter+image_filename, 'wb') as image_file:
+                            image_file.write(image_data)
+                        print("Uploading File to Discord")
+                        await message.channel.send(image_prompt,file=discord.File(scriptPath+delimeter+image_filename))
+                        os.remove(scriptPath+delimeter+image_filename)
+                    except Exception as e:
+                        print("ERROR:",e)
+                if str(message.author) == admin_user:
+                    rate_limit_data['admin'] = current_time
+                else:
+                    rate_limit_data['draw'] = current_time
+                    rate_limit_data['bot'] = current_time
+                
+                with open(scriptPath+delimeter+'ratelimit', 'wb') as file:
+                    pickle.dump(rate_limit_data, file)
             elif command == '!meme': # Generate Meme
                 get_response = False
+                generate_meme = True
                 print("Making a meme")
                 current_time = datetime.datetime.now().timestamp()
-                if 'meme' in rate_limit_data and str(message.author) != admin_user:
-                    last_time = rate_limit_data['meme']
-                    last_time = datetime.datetime.fromtimestamp(last_time)
-                    time_since_last = datetime.datetime.now() - last_time
-                    
-                    if time_since_last < datetime.timedelta(minutes=image_rate_limit): 
-                        time_remaining = datetime.timedelta(minutes=image_rate_limit) - time_since_last
-                        time_remaining_min = time_remaining.total_seconds() / 60
-                        await message.channel.send('Meme generation is rate-limited. Try again in '+str(round(time_remaining_min))+' minutes',reference=message)
-                else:
+                try:
+                    if 'meme' in rate_limit_data and str(message.author) != admin_user:
+                        last_time = rate_limit_data['meme']
+                        last_time = datetime.datetime.fromtimestamp(last_time)
+                        time_since_last = datetime.datetime.now() - last_time
+                        
+                        if time_since_last < datetime.timedelta(minutes=image_rate_limit): 
+                            time_remaining = datetime.timedelta(minutes=image_rate_limit) - time_since_last
+                            time_remaining_min = time_remaining.total_seconds() / 60
+                            await message.channel.send('Meme generation is rate-limited. Try again in '+str(round(time_remaining_min))+' minutes',reference=message)
+                            generate_meme = False
+                except Exception as e:
+                    print(e)
+                if generate_meme == True:
                     image_prompt = ''
                     meme_command = str(message.content.replace('!meme ',''))
                     try:
@@ -235,7 +281,7 @@ async def on_message(message):
                                         messages=[
                                             {'role':'system','content':frellnik_role},
                                             {'role':'assistant','content':'Limit text to 200 characters'},
-                                            {'role':'user','content':'Generate a short (200 characters or less), darkly humorous or ironically insightful text based on this prompt: '+image_prompt}
+                                            {'role':'user','content':'Generate a short (200 characters or less), hilarious, ironic, or punny text based on this prompt: '+image_prompt}
                                             ]
                                         )
                                     print(reply['choices'][0]['message']['content'])
@@ -287,7 +333,7 @@ async def on_message(message):
                                     messages=[
                                         {'role':'system','content':frellnik_role},
                                         {'role':'assistant','content':'Limit text to 200 characters'},
-                                        {'role':'user','content':'Generate a short (200 characters or less), darkly humorous or ironically insightful text based on this prompt: '+image_prompt}
+                                        {'role':'user','content':'Generate a short (200 characters or less), hilarious, ironic, or punny text based on this prompt: '+image_prompt}
                                         ]
                                     )
                                 print(reply['choices'][0]['message']['content'])
@@ -335,7 +381,7 @@ async def on_message(message):
                         print(top_text,bottom_text)
                         print("Generating Image")
                         image = openai.Image.create(
-                            prompt="Place the interesting parts of this image in the center. Closely match this prompt: "+image_prompt+". and match the theme of the following description: "+top_text+bottom_text,
+                            prompt="Create a photorealistic image of "+image_prompt,
                             n=1,
                             size='1024x1024',
                         )
@@ -451,14 +497,14 @@ async def on_message(message):
                             print("ERROR:",e)
                     except Exception as e:
                         print("ERROR:",e)
-            if str(message.author) == admin_user:
-                rate_limit_data['admin'] = current_time
-            else:
-                rate_limit_data['meme'] = current_time
-                rate_limit_data['bot'] = current_time
+                if str(message.author) == admin_user:
+                    rate_limit_data['admin'] = current_time
+                else:
+                    rate_limit_data['meme'] = current_time
+                    rate_limit_data['bot'] = current_time
             
-            with open(scriptPath+delimeter+'ratelimit', 'wb') as file:
-                pickle.dump(rate_limit_data, file)
+                with open(scriptPath+delimeter+'ratelimit', 'wb') as file:
+                    pickle.dump(rate_limit_data, file)
         elif discord_bot.user.mentioned_in(message):
             print(f'{discord_bot.user.name} has been pinged. Rolling for reply...')
             roll = random.randint(1,100)
@@ -618,10 +664,10 @@ async def on_message(message):
                             bottom_text = ' '
                         else:
                             top_text = ' '
-                            bottom_text = send_message[0].replace('"', '')
+                            bottom_text = send_message.replace('"', '')
                     print("Generating Image")
                     image = openai.Image.create(
-                        prompt="Place the interesting parts of this image in the center. Closely match this prompt: "+image_prompt+". and match the theme of the following description: "+top_text+bottom_text,
+                        prompt="Create a photorealistic image of: "+image_prompt,
                         n=1,
                         size='1024x1024',
                     )
