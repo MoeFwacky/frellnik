@@ -295,11 +295,11 @@ async def on_message(message):
                                 send_message = reply['choices'][0]['message']['content']
                                 print("Checking for punctuation")
                                 print(send_message)
-                                punctuation_marks = [',', '.', '!', '?', ':']
+                                punctuation_marks = ['.', '?', '!', ':', ',']
                                 split_on = None
 
                                 for mark in punctuation_marks:
-                                    index = send_message.find(mark, 5, -5)
+                                    index = send_message.find(mark, 8, -8)
                                     if index != -1:
                                         split_on = mark
                                         break
@@ -320,11 +320,11 @@ async def on_message(message):
                                     print("Setting text to top or bottom")
                                     roll = random.randint(1, 2)  # randomly decide if text should be on top or bottom
                                     if roll == 1:
-                                        top_text = send_message[0].replace('"', '')
+                                        top_text = send_message.replace('"', '')
                                         bottom_text = ' '
                                     else:
                                         top_text = ' '
-                                        bottom_text = send_message[0].replace('"', '')
+                                        bottom_text = send_message.replace('"', '')
                         else:
                             image_prompt = meme_command[0].strip()
                             try:
@@ -373,11 +373,11 @@ async def on_message(message):
                                     print("Setting text to top or bottom")
                                     roll = random.randint(1, 2)  # randomly decide if text should be on top or bottom
                                     if roll == 1:
-                                        top_text = send_message[0].replace('"', '')
+                                        top_text = send_message.replace('"', '')
                                         bottom_text = ' '
                                     else:
                                         top_text = ' '
-                                        bottom_text = send_message[0].replace('"', '')
+                                        bottom_text = send_message.replace('"', '')
                         print(top_text,bottom_text)
                         print("Generating Image")
                         image = openai.Image.create(
