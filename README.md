@@ -8,13 +8,12 @@ Follow these steps to set up and run frellnik:
 ```$ pip install -r requirements.txt```
 * Follow these instrucitons to set up a discord bot account: https://discordpy.readthedocs.io/en/stable/discord.html
 * Edit the config.ini file and provide the necessary information:
-** Open AI Org and API Keys
-** Discord API Key
-** Channel ID in the server to send reconnection message to
-** Discord Name of the admin user
-** Discord Name of the Bot
-** The Base Prompt: A concise plain-language description of the bot, defining its personality on the server.
-Usage
+ * Open AI Org and API Keys
+ * Discord API Key
+ * Channel ID in the server to send reconnection message to
+ * Discord Name of the admin user
+ * Discord Name of the Bot
+ * The Base Prompt: A concise plain-language description of the bot, defining its personality on the server.
 
 ## Usage
 To use frellnik, follow these instructions:
